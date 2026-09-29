@@ -15,6 +15,8 @@ public interface CustomerFacade {
 
     Customer getByEmail(String email);
 
+    Customer getByUserName(String uername);
+
     Page<Customer> listByCriteria(CustomerCriteria criteria, int page, int count);
 
     // 2. Đăng ký & Tạo mới
@@ -23,13 +25,13 @@ public interface CustomerFacade {
     boolean authenticate(String username, String rawPassword);
     public boolean checkIfUserExists(final String userName) throws Exception;
 
+    //  Cập nhật thông tin
+    ReadableCustomer updateCustomer(Long id, PersistableCustomer customer) throws Exception;
     // 4. Xóa tài khoản
     void deleteById(Long id);
 
     void deleteByNick(String nick);
-
-    // 5. Đặt lại / Đổi mật khẩu
-    void changePassword(Long customerId, String newPassword);
-
-    void resetPasswordWithToken(String token, String newPassword);
+    
+    void requestPasswordReset(String email) throws Exception;
+    void resetPasswordWithToken(String token, String newPassword) throws Exception;
 }

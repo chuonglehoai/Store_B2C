@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,15 +44,17 @@ public class ResetUserPasswordApi {
     @Operation(summary = "Yêu cầu khôi phục mật khẩu (sinh mã Token)")
     public ResponseEntity<?> passwordResetRequest(@Valid @RequestBody ResetPasswordRequest request) {
         if (request.getUsername() == null || request.getUsername().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Username cannot be empty"));
+            return ResponseEntity.badRequest().body(Map.of("message", "Email không được để trống"));
         }
 
         try {
-            // Gọi Facade tạo token reset mật khẩu cho User
-            return ResponseEntity.ok(Map.of("message", "Reset password request submitted successfully"));
+            // GỌI LOGIC THỰC TẾ TỪ FACADE
+            userFacade.requestPasswordReset(request.getUsername());
+            
+            return ResponseEntity.ok(Map.of("message", "Nếu email hợp lệ, hệ thống sẽ gửi đường dẫn khôi phục."));
         } catch (Exception e) {
             LOGGER.error("Lỗi khi xử lý yêu cầu reset mật khẩu cho: {}", request.getUsername(), e);
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Lỗi hệ thống: " + e.getMessage()));
         }
     }
 
@@ -81,7 +84,7 @@ public class ResetUserPasswordApi {
     @Operation(summary = "Đặt lại mật khẩu mới thông qua mã Token")
     public ResponseEntity<?> changePassword(
             @PathVariable String token,
-            @Valid @RequestBody PasswordRequest passwordRequest) {
+            @RequestBody PasswordRequest passwordRequest) {
 
         // Kiểm tra khớp 2 lần nhập mật khẩu
         if (passwordRequest.getPassword() == null || passwordRequest.getRepeatPassword() == null ||

@@ -2,7 +2,9 @@ package com.salesmanager.core.model.user;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -72,8 +74,7 @@ public class User extends SalesManagerEntity<Long, User> implements Auditable {
 		joinColumns = @JoinColumn(name = "USER_ID", referencedColumnName = "USER_ID"),
 		inverseJoinColumns = @JoinColumn(name = "GROUP_ID", referencedColumnName = "GROUP_ID")
 	)
-	private List<Group> groups = new ArrayList<>();
-	
+	private Set<Group> groups = new HashSet<>();
 	
 	@NotBlank(message = "Email không được để trống")
 	@Email
@@ -83,6 +84,9 @@ public class User extends SalesManagerEntity<Long, User> implements Auditable {
 	@NotBlank(message = "Mật khẩu không được để trống")
 	@Column(name="ADMIN_PASSWORD", length=60)
 	private String adminPassword;
+
+	@Column(name="ADMIN_USER_NAME")
+	private String adminUserName;
 	
 	@Column(name="ACTIVE")
 	private boolean active = true;
@@ -103,6 +107,20 @@ public class User extends SalesManagerEntity<Long, User> implements Auditable {
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "LAST_LOGIN")
 	private Date lastLogin;
+
+	@Column(name="FAILED_LOGIN_ATTEMPTS")
+    private Integer failedLoginAttempts = 0;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name="LOCK_TIME")
+    private Date lockTime;
+
+	@Column(name="RESET_PASSWORD_TOKEN")
+    private String resetPasswordToken;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name="RESET_PASSWORD_EXPIRY")
+    private Date resetPasswordExpiry;
 	
 	@Embedded
 	private CredentialsReset credentialsResetRequest;
@@ -145,6 +163,14 @@ public class User extends SalesManagerEntity<Long, User> implements Auditable {
 		this.adminName = adminName;
 	}
 
+	public String getAdminUserName() {
+		return adminUserName;
+	}
+
+	public void setAdminUserName(String adminUserName) {
+		this.adminUserName = adminUserName;
+	}
+
 	public String getAdminEmail() {
 		return adminEmail;
 	}
@@ -185,11 +211,11 @@ public class User extends SalesManagerEntity<Long, User> implements Auditable {
 		this.adminAddress = adminAddress;
 	}
 
-	public void setGroups(List<Group> groups) {
+	public void setGroups(Set<Group> groups) {
 		this.groups = groups;
 	}
 
-	public List<Group> getGroups() {
+	public Set<Group> getGroups() {
 		return groups;
 	}
 
@@ -209,7 +235,23 @@ public class User extends SalesManagerEntity<Long, User> implements Auditable {
 		return lastLogin;
 	}
 
-	/*public String getResetPasswordToken() {
+	public Integer getFailedLoginAttempts() {
+		return failedLoginAttempts;
+	}
+
+	public void setFailedLoginAttempts(Integer failedLoginAttempts) {
+		this.failedLoginAttempts = failedLoginAttempts;
+	}
+
+	public Date getLockTime() {
+		return lockTime;
+	}
+
+	public void setLockTime(Date lockTime) {
+		this.lockTime = lockTime;
+	}
+
+	public String getResetPasswordToken() {
 		return resetPasswordToken;
 	}
 
@@ -217,13 +259,13 @@ public class User extends SalesManagerEntity<Long, User> implements Auditable {
 		this.resetPasswordToken = resetPasswordToken;
 	}
 
-	public Date getTokenPasswordExpiration() {
-		return tokenPasswordExpiration;
+	public Date getResetPasswordExpiry() {
+		return resetPasswordExpiry;
 	}
 
-	public void setTokenPasswordExpiration(Date tokenPasswordExpiration) {
-		this.tokenPasswordExpiration = tokenPasswordExpiration;
-	}*/
+	public void setResetPasswordExpiry(Date resetPasswordExpiry) {
+		this.resetPasswordExpiry = resetPasswordExpiry;
+	}
 	
 
 }

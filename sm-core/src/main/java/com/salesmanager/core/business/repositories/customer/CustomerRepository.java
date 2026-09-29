@@ -28,11 +28,8 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
            "WHERE LOWER(c.fullName) LIKE LOWER(CONCAT('%', :fullName, '%'))")
     List<Customer> findByName(@Param("fullName") String name);
 
-    // Bổ sung: Tìm kiếm theo mã token khôi phục mật khẩu
-    @Query("SELECT DISTINCT c FROM Customer c " +
-           "LEFT JOIN FETCH c.groups " +
-           "WHERE c.credentialsResetRequest.credentialsRequest = :token")
-    Optional<Customer> findByResetPasswordToken(@Param("token") String token);
+    Customer findByResetPasswordToken(String resetPasswordToken);
+    
 
     @Query(value = "SELECT c FROM Customer c WHERE (:search IS NULL OR LOWER(c.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(c.emailAddress) LIKE LOWER(CONCAT('%', :search, '%')))",
            countQuery = "SELECT count(c) FROM Customer c WHERE (:search IS NULL OR LOWER(c.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(c.emailAddress) LIKE LOWER(CONCAT('%', :search, '%')))")

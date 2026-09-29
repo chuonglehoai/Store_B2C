@@ -59,17 +59,18 @@
                 <artifactId>sm-core-model</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            
             <dependency>
                 <groupId>com.hoaichuong</groupId>
                 <artifactId>sm-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
             <dependency>
                 <groupId>com.hoaichuong</groupId>
                 <artifactId>sm-shop-model</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <!-- 3. Đã xóa sm-core-modules khỏi Dependency Management -->
         </dependencies>
     </dependencyManagement>
 

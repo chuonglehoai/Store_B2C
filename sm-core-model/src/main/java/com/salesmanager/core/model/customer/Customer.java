@@ -4,6 +4,14 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.salesmanager.core.model.common.CredentialsReset;
+import com.salesmanager.core.model.common.audit.AuditSection;
+import com.salesmanager.core.model.common.audit.Auditable;
+import com.salesmanager.core.model.generic.SalesManagerEntity;
+import com.salesmanager.core.model.user.Group;
+import com.salesmanager.core.utils.CloneUtils;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
@@ -17,25 +25,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.TableGenerator;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-//import com.salesmanager.core.model.catalog.product.review.ProductReview;
-import com.salesmanager.core.model.common.CredentialsReset;
-import com.salesmanager.core.model.common.audit.AuditSection;
-import com.salesmanager.core.model.common.audit.Auditable;
-import com.salesmanager.core.model.generic.SalesManagerEntity;
-import com.salesmanager.core.model.user.Group;
-import com.salesmanager.core.utils.CloneUtils;
 
 @Entity
 @Table(name = "CUSTOMER", 
@@ -96,7 +92,21 @@ public class Customer extends SalesManagerEntity<Long, Customer> implements Audi
 
 	@Column(name = "ACTIVE")
 	private boolean active = true;
-	
+
+	@Column(name="FAILED_LOGIN_ATTEMPTS")
+    private Integer failedLoginAttempts = 0;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name="LOCK_TIME")
+    private Date lockTime;
+
+	@Column(name="RESET_PASSWORD_TOKEN")
+    private String resetPasswordToken;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name="RESET_PASSWORD_EXPIRY")
+    private Date resetPasswordExpiry;
+
 	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.REFRESH})
 	@JoinTable(
 		name = "CUSTOMER_GROUP",
@@ -175,6 +185,8 @@ public class Customer extends SalesManagerEntity<Long, Customer> implements Audi
 		this.reviews = reviews;
 	}*/
 
+
+
 	public String getAvatarUrl() {
 		return avatarUrl;
 	}
@@ -205,6 +217,22 @@ public class Customer extends SalesManagerEntity<Long, Customer> implements Audi
 
 	public void setActive(boolean active) {
 		this.active = active;
+	}
+
+	public Integer getFailedLoginAttempts() {
+		return failedLoginAttempts;
+	}
+
+	public void setFailedLoginAttempts(Integer failedLoginAttempts) {
+		this.failedLoginAttempts = failedLoginAttempts;
+	}
+
+	public Date getLockTime() {
+		return CloneUtils.clone(lockTime);
+	}
+
+	public void setLockTime(Date lockTime) {
+		this.lockTime = CloneUtils.clone(lockTime);
 	}
 
 	public void setGroups(List<Group> groups) {
@@ -239,6 +267,22 @@ public class Customer extends SalesManagerEntity<Long, Customer> implements Audi
 
 	public void setCredentialsResetRequest(CredentialsReset credentialsResetRequest) {
 		this.credentialsResetRequest = credentialsResetRequest;
+	}
+
+	public String getResetPasswordToken() {
+		return resetPasswordToken;
+	}
+
+	public void setResetPasswordToken(String resetPasswordToken) {
+		this.resetPasswordToken = resetPasswordToken;
+	}	
+
+	public Date getResetPasswordExpiry() {
+		return CloneUtils.clone(resetPasswordExpiry);
+	}
+
+	public void setResetPasswordExpiry(Date resetPasswordExpiry) {
+		this.resetPasswordExpiry = CloneUtils.clone(resetPasswordExpiry);
 	}
 	
 }

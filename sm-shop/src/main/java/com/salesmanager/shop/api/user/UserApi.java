@@ -3,12 +3,15 @@ package com.salesmanager.shop.api.user;
 import java.security.Principal;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -50,59 +53,68 @@ public class UserApi {
     @ResponseStatus(HttpStatus.OK)
     @PostMapping(value = { "/private/user/" }, produces = MediaType.APPLICATION_JSON_VALUE)
     @ApiOperation(httpMethod = "POST", value = "Creates a new admin user", notes = "", response = ReadableUser.class)
-    public ReadableUser create(
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    public ResponseEntity<?> create(
             @Valid @RequestBody PersistableUser user, 
             HttpServletRequest request) {
-        
-        // 1. Kiểm tra trạng thái đăng nhập
-        String authenticatedUser = userFacade.authenticatedUser();
-        if (authenticatedUser == null) {
-            throw new UnauthorizedException("Yêu cầu đăng nhập để thực hiện thao tác này");
-        }
-        
-        // 2. Kiểm tra quyền hạn: Chỉ SUPERADMIN hoặc ADMIN mới được phép tạo tài khoản
-        userFacade.authorizedGroup(authenticatedUser, 
-                Stream.of(Constants.GROUP_SUPERADMIN, Constants.GROUP_ADMIN, Constants.GROUP_ADMIN_RETAIL)
-                      .collect(Collectors.toList()));
 
-        // 3. Tiến hành tạo User (đã bỏ tham số merchantStore)
-        return userFacade.create(user);
+        try {
+                ReadableUser createdUser = userFacade.create(user);
+                return ResponseEntity.ok(createdUser);
+            } catch (IllegalArgumentException e) {
+                // Bắt lỗi trùng username do bạn ném ra từ Facade
+                return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            } catch (Exception e) {
+                // Bắt các lỗi hệ thống khác
+                LOGGER.error("Lỗi khi tạo user", e);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", "Lỗi hệ thống: " + e.getMessage()));
+            }
     }
 
     // 2. Lấy chi tiết Admin theo ID
     @GetMapping("/{id}")
     @Operation(summary = "Lấy thông tin quản trị viên theo ID")
     public ResponseEntity<?> get(@PathVariable Long id) {
-        User user = userFacade.getById(id);
+        ReadableUser user = userFacade.getById(id);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy User với ID: " + id));
         }
         return ResponseEntity.ok(user);
     }
 
-    // 3. Lấy danh sách Admin có phân trang và tìm kiếm theo Email
+    // 3. Lấy danh sách Admin (Phân tích tìm kiếm theo Tên hoặc Email)
     @GetMapping
     @Operation(summary = "Lấy danh sách quản trị viên có phân trang")
-    public ResponseEntity<Page<User>> list(
+    public ResponseEntity<Page<ReadableUser>> list(
             @RequestParam(value = "page", required = false, defaultValue = "0") Integer page,
             @RequestParam(value = "count", required = false, defaultValue = "20") Integer count,
-            @RequestParam(value = "emailAddress", required = false) String emailAddress) {
+            @RequestParam(value = "searchKeyword", required = false) String searchKeyword) {
 
         UserCriteria criteria = new UserCriteria();
-        if (emailAddress != null && !emailAddress.trim().isEmpty()) {
-            criteria.setAdminEmail(emailAddress);
+        
+        if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
+            String keyword = searchKeyword.trim();
+            
+            // Đặc trưng của Email là có chứa ký tự '@'
+            if (keyword.contains("@")) {
+                criteria.setAdminEmail(keyword);
+            } else {
+                // Nếu không có '@', hệ thống tự hiểu là đang tìm theo Họ tên
+                criteria.setAdminName(keyword); 
+            }
         }
 
-        Page<User> userPage = userFacade.listByCriteria(criteria, page, count);
+        Page<ReadableUser> userPage = userFacade.listByCriteria(criteria, page, count);
         return ResponseEntity.ok(userPage);
     }
 
     // 4. Cập nhật thông tin Admin
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật thông tin quản trị viên")
-    public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody User user) {
+    public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody PersistableUser user) {
         try {
-            User updatedUser = userFacade.update(id, user);
+            ReadableUser updatedUser = userFacade.update(id, user);
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
             LOGGER.error("Lỗi cập nhật User ID: {}", id, e);
@@ -128,7 +140,7 @@ public class UserApi {
         }
     }
 
-    // 6. Khóa / Kích hoạt tài khoản
+    //  Khóa / Kích hoạt tài khoản
     @PatchMapping("/{id}/enabled")
     @Operation(summary = "Bật hoặc tắt kích hoạt tài khoản")
     public ResponseEntity<?> updateEnabled(@PathVariable Long id, @RequestBody Map<String, Boolean> payload) {
@@ -137,28 +149,22 @@ public class UserApi {
             return ResponseEntity.badRequest().body(Map.of("error", "Trường 'active' là bắt buộc!"));
         }
 
-        User existingUser = userFacade.getById(id);
-        if (existingUser == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy User với ID: " + id));
-        }
-
-        existingUser.setActive(active);
-        userFacade.update(id, existingUser);
-        return ResponseEntity.ok(Map.of("message", "Cập nhật trạng thái kích hoạt thành công!"));
-    }
-
-    // 7. Xóa tài khoản Admin
-    @DeleteMapping("/{id}")
-    @Operation(summary = "Xóa tài khoản quản trị viên theo ID")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
         try {
-            userFacade.delete(id);
-            return ResponseEntity.ok(Map.of("message", "Đã xóa thành công tài khoản ID: " + id));
+            userFacade.changeStatus(id, active);
+            return ResponseEntity.ok(Map.of("message", "Cập nhật trạng thái thành công!"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            LOGGER.error("Lỗi khi xóa User ID: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/groups")
+    @Operation(summary = "Lấy danh sách các nhóm quyền (Role) hiện có")
+    public ResponseEntity<?> getAvailableGroups() {
+        return ResponseEntity.ok(userFacade.listAvailableGroups());
+    }
+
 
     // 8. Lấy thông tin tài khoản Admin đang đăng nhập
     @GetMapping("/profile")
@@ -170,7 +176,7 @@ public class UserApi {
         }
 
         String userName = principal.getName();
-        User user = userFacade.getByUserName(userName);
+        ReadableUser user = userFacade.getByUserName(userName);
         if (user == null || !user.isActive()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Tài khoản không tồn tại hoặc đã bị vô hiệu hóa!"));
         }

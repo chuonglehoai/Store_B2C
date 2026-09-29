@@ -1,13 +1,18 @@
 package com.salesmanager.shop.security.user;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.salesmanager.core.business.services.user.UserService;
+import com.salesmanager.core.model.user.Group;
+import com.salesmanager.core.model.user.Permission;
 import com.salesmanager.core.model.user.User;
 
 @Service("jwtAdminDetailsService")
@@ -22,23 +27,45 @@ public class JWTUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         try {
+            // 1. Tìm User dưới Database
             User user = userService.getByUserName(username);
             if (user == null) {
+                // Ném đúng chuẩn Exception của Spring Security để nó không bị lặp vô hạn
                 throw new UsernameNotFoundException("Không tìm thấy Admin: " + username);
             }
 
-            // Truyền chính xác 9 tham số theo thứ tự của JWTUser constructor
+            // 2. Chuyển đổi Group và Permission của B2C thành GrantedAuthority của Spring Security
+            List<GrantedAuthority> authorities = new ArrayList<>();
+            if (user.getGroups() != null) {
+                for (Group group : user.getGroups()) {
+                    // Thêm tiền tố ROLE_ cho nhóm quyền (VD: ROLE_SUPERADMIN)
+                    authorities.add(new SimpleGrantedAuthority("ROLE_" + group.getGroupName()));
+                    
+                    // Thêm các quyền lẻ (nếu có)
+                    if (group.getPermissions() != null) {
+                        for (Permission permission : group.getPermissions()) {
+                            authorities.add(new SimpleGrantedAuthority(permission.getPermissionName()));
+                        }
+                    }
+                }
+            }
+
+            
             return new JWTUser(
-                user.getId(),                 // 1. Long id
-                user.getAdminName(),            // 4. String lastname
-                user.getAdminEmail(),         // 5. String email
-                user.getAdminPassword(),      // 6. String password
-                Collections.emptyList(),      // 7. Collection<? extends GrantedAuthority> authorities
-                user.isActive(),              // 8. boolean enabled
-                null                          // 9. Date lastPasswordResetDate
+                user.getId(),  
+                user.getAdminUserName(),               
+                user.getAdminName(),          
+                user.getAdminEmail(),         
+                user.getAdminPassword(),      
+                authorities,                 
+                user.isActive(),              
+                null                         
             );
+
+        } catch (UsernameNotFoundException e) {
+            throw e; // Ném thẳng ra ngoài để xử lý 401
         } catch (Exception e) {
-            throw new UsernameNotFoundException("Lỗi truy vấn người dùng: " + username, e);
+            throw new UsernameNotFoundException("Lỗi hệ thống khi tải hồ sơ: " + username, e);
         }
     }
 }

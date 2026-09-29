@@ -11,7 +11,7 @@ public class UserEntity extends User {
   private String adminPhone;
   private String avatarUrl;
   private String adminAddress;
-  private String userName;
+  private String adminUserName;
 	private boolean active;
 
   public String getAdminName() {
@@ -54,12 +54,12 @@ public class UserEntity extends User {
     this.adminAddress = adminAddress;
   } 
 
-  public String getUserName() {
-    return userName;
+  public String getAdminUserName() {
+    return adminUserName;
   }
 
-  public void setUserName(String userName) {
-    this.userName = userName;
+  public void setAdminUserName(String adminUserName) {
+    this.adminUserName = adminUserName;
   }
 
   public boolean isActive() {

@@ -57,11 +57,11 @@ public class UserServiceImpl extends SalesManagerEntityServiceImpl<Long, User> i
 		userRepository.save(user);
 	}
 
-	@Override
-    public Page<User> listByCriteria(UserCriteria criteria, int page, int count) throws ServiceException {
+	// Bên trong UserServiceImpl.java (Tầng Core)
+    @Override
+    public Page<User> listByCriteria(UserCriteria criteria, int page, int count) {
         Pageable pageRequest = PageRequest.of(page, count);
-        String email = criteria != null ? criteria.getAdminEmail() : null;
-        return userRepository.listAll(email, pageRequest);
+        return userRepository.listAll(criteria.getAdminEmail(), criteria.getAdminName(), pageRequest);
     }
 
 	@Override
@@ -73,7 +73,7 @@ public class UserServiceImpl extends SalesManagerEntityServiceImpl<Long, User> i
 
 	@Override
 	public User getByPasswordResetToken( String token) {
-		return userRepository.findByResetPasswordToken(token).orElse(null);
+		return userRepository.findByResetPasswordToken(token);
 	}
 
 }
