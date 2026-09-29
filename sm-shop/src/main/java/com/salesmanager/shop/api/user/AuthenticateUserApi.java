@@ -1,6 +1,7 @@
 package com.salesmanager.shop.api.user;
 
 import java.util.Map;
+import java.util.Date;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,8 @@ import com.salesmanager.shop.security.AuthenticationRequest;
 import com.salesmanager.shop.security.AuthenticationResponse;
 import com.salesmanager.shop.security.JWTTokenUtil;
 import com.salesmanager.shop.security.user.JWTUser;
+import com.salesmanager.core.business.services.user.UserService;
+import com.salesmanager.core.model.user.User;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,15 +48,18 @@ public class AuthenticateUserApi {
     private final AuthenticationManager jwtAdminAuthenticationManager;
     private final UserDetailsService jwtAdminDetailsService;
     private final JWTTokenUtil jwtTokenUtil;
+    private final UserService userService;
 
     // Sử dụng Constructor Injection thay thế @Inject / @Autowired cũ
     public AuthenticateUserApi(
             AuthenticationManager jwtAdminAuthenticationManager,
             UserDetailsService jwtAdminDetailsService,
-            JWTTokenUtil jwtTokenUtil) {
+            JWTTokenUtil jwtTokenUtil,
+            UserService userService) {
         this.jwtAdminAuthenticationManager = jwtAdminAuthenticationManager;
         this.jwtAdminDetailsService = jwtAdminDetailsService;
         this.jwtTokenUtil = jwtTokenUtil;
+        this.userService = userService;
     }
 
     /**
@@ -64,29 +70,84 @@ public class AuthenticateUserApi {
     @Operation(summary = "Đăng nhập tài khoản quản trị viên")
     public ResponseEntity<?> authenticate(@RequestBody @Valid AuthenticationRequest authenticationRequest) {
         try {
-            // Xác thực thông tin đăng nhập qua Spring Security AuthenticationManager
-            Authentication authentication = jwtAdminAuthenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            authenticationRequest.getUsername(),
-                            authenticationRequest.getPassword()
-                    )
-            );
+            User userModel = userService.getByUserName(authenticationRequest.getUsername());
+            if (userModel == null) {
+                throw new BadCredentialsException("Sai tên đăng nhập hoặc mật khẩu");
+            }
+            // 2. Kiểm tra KHÓA VĨNH VIỄN (active = 0)
+            if (!userModel.isActive()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Tài khoản đã bị khóa bảo mật. Vui lòng liên hệ SuperAdmin."));
+            }
 
-            // Thiết lập phiên xác thực vào Security Context
+            // 3. Kiểm tra KHÓA TẠM THỜI (15 phút)
+            int currentFails = userModel.getFailedLoginAttempts() == null ? 0 : userModel.getFailedLoginAttempts();
+            if (currentFails >= 5 && userModel.getLockTime() != null) {
+                long lockDurationMillis = System.currentTimeMillis() - userModel.getLockTime().getTime();
+                long fifteenMinutesMillis = 15 * 60 * 1000;
+                
+                if (lockDurationMillis < fifteenMinutesMillis) {
+                    long minutesLeft = (fifteenMinutesMillis - lockDurationMillis) / 60000;
+                    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                            .body(Map.of("error", "Tài khoản bị khóa tạm thời. Vui lòng thử lại sau " + minutesLeft + " phút."));
+                }
+            }
+
+            // 4. Bắt đầu xác thực qua AuthenticationManager
+            Authentication authentication;
+            try {
+                authentication = jwtAdminAuthenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                authenticationRequest.getUsername(),
+                                authenticationRequest.getPassword()
+                        )
+                );
+            } catch (BadCredentialsException e) {
+                // XỬ LÝ KHI NHẬP SAI MẬT KHẨU
+                currentFails++;
+                userModel.setFailedLoginAttempts(currentFails);
+
+                if (currentFails == 5) {
+                    userModel.setLockTime(new java.util.Date());
+                    userService.update(userModel); 
+                    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                            .body(Map.of("error", "Nhập sai mật khẩu 5 lần. Tài khoản bị khóa tạm thời 15 phút."));
+                } else if (currentFails > 5) {
+                    userModel.setActive(false);
+                    userService.update(userModel);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Tài khoản đã bị khóa vĩnh viễn do nhập sai quá nhiều lần."));
+                }
+                userService.update(userModel);
+                throw e;
+            }
+
+            userModel.setFailedLoginAttempts(0);
+            userModel.setLockTime(null);
+            userModel.setLastLogin(new Date()); 
+            userService.update(userModel);
+            
+
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            // Tải chi tiết người dùng và khởi tạo JWT Token
+            //  Tải thông tin UserDetails và sinh chuỗi Token
             JWTUser userDetails = (JWTUser) jwtAdminDetailsService.loadUserByUsername(authenticationRequest.getUsername());
             String token = jwtTokenUtil.generateToken(userDetails);
-
+            
             return ResponseEntity.ok(new AuthenticationResponse(userDetails.getId(), token));
 
         } catch (BadCredentialsException e) {
-            // Trả về lỗi 401 nếu sai tài khoản hoặc mật khẩu
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Bad credentials"));
+            // Bắt lỗi sai mật khẩu hoặc không tìm thấy username
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Sai tên đăng nhập hoặc mật khẩu!"));
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            // Bắt lỗi tài khoản có active = false
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Tài khoản của bạn đã bị khóa hoặc chưa kích hoạt!"));
         } catch (Exception e) {
-            LOGGER.error("Lỗi trong quá trình xác thực user: {}", authenticationRequest.getUsername(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Authentication error"));
+            // Bắt các lỗi sập hệ thống do code hoặc Database
+            LOGGER.error("Lỗi sập hệ thống khi xác thực user: {}", authenticationRequest.getUsername(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Lỗi hệ thống trong quá trình đăng nhập: " + e.getMessage()));
         }
     }
 

@@ -16,6 +16,7 @@ public class JWTUser implements UserDetails {
 	private static final long serialVersionUID = 1L;
 	private final Long id;
     private final String username;
+    private final String name;
     private final String password;
     private final String email;
     private final Collection<? extends GrantedAuthority> authorities;
@@ -25,6 +26,7 @@ public class JWTUser implements UserDetails {
     public JWTUser(
           Long id,
           String username,
+          String name,
           String email,
           String password, Collection<? extends GrantedAuthority> authorities,
           boolean enabled,
@@ -32,6 +34,7 @@ public class JWTUser implements UserDetails {
     ) {
         this.id = id;
         this.username = username;
+        this.name = name;
         this.email = email;
         this.password = password;
         this.authorities = authorities;
@@ -47,6 +50,9 @@ public class JWTUser implements UserDetails {
     @Override
     public String getUsername() {
         return username;
+    }
+    public String getName(){
+        return name;
     }
 
     @JsonIgnore

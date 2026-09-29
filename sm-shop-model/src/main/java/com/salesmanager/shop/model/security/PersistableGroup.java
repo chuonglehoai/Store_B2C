@@ -1,17 +1,10 @@
 package com.salesmanager.shop.model.security;
 
-/**
- * Object used for saving a group
- * 
- * @author carlsamson
- *
- */
 public class PersistableGroup extends GroupEntity {
 
-  /**
-   * 
-   */
   private static final long serialVersionUID = 1L;
+  
+  private Long id;
   
   public PersistableGroup() {}
   
@@ -19,4 +12,11 @@ public class PersistableGroup extends GroupEntity {
     super.setName(name);
   }
 
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
+  }
 }

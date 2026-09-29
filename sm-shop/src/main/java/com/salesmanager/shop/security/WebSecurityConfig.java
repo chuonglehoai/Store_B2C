@@ -1,19 +1,25 @@
 package com.salesmanager.shop.security;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.salesmanager.shop.api.user.JWTAdminAuthenticationProvider;
+
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class WebSecurityConfig {
 
     private final AuthenticationTokenFilter authenticationTokenFilter;
@@ -30,6 +36,13 @@ public class WebSecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public JWTAdminAuthenticationProvider authenticationProvider(
+            @Qualifier("jwtAdminDetailsService") UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) {
+        return new JWTAdminAuthenticationProvider(userDetailsService, passwordEncoder);
     }
 
     @Bean
@@ -53,15 +66,22 @@ public class WebSecurityConfig {
                     "/error"
                 ).permitAll()
 
+                // CÁC ĐƯỜNG DẪN CÔNG KHAI DÀNH CHO CUSTOMER & ADMIN
                 .requestMatchers(
-                    "/api/v1/customer/register",
-                    "/api/v1/customer/login",
+                    // Luồng Customer
+                    "/api/v1/customer/register", // Dữ phòng API cũ
+                    "/api/v1/customer/login",    // Dữ phòng API cũ
                     "/api/v1/customers/register",
                     "/api/v1/customers/login",
-                    "/api/v1/auth/**"
+                    "/api/v1/customers/password/**",
+                    
+                    // Luồng Admin
+                    "/api/v1/private/login",         // Admin Đăng nhập
+                    "/api/v1/auth/**",               // Refresh Token
+                    "/api/v1/user/password/**"       // Admin Quên & Đặt lại mật khẩu (Đã sửa chuẩn theo Controller)
                 ).permitAll()
 
-                // Các API quản trị/cá nhân còn lại bắt buộc có Token
+                // Các API quản trị/cá nhân còn lại bắt buộc có Token (Bao gồm cả Tạo Admin và Lấy thông tin ID)
                 .anyRequest().authenticated()
             )
 

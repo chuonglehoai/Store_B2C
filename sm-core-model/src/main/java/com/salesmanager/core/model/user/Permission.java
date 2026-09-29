@@ -30,10 +30,9 @@ public class Permission extends SalesManagerEntity<Integer, Permission> implemen
 	private static final long serialVersionUID = 813468140197420748L;
 
 	@Id
-	@Column(name = "PERMISSION_ID", unique=true, nullable=false)
-	@TableGenerator(name = "PERMISSION_GEN", table = "SM_SEQUENCER", pkColumnName = "SEQ_NAME", valueColumnName = "SEQ_COUNT", pkColumnValue = "PERMISSION_SEQ_NEXT_VAL")
-	@GeneratedValue(strategy = GenerationType.TABLE, generator = "PERMISSION_GEN")
-	private Integer id;
+    @Column(name = "PERMISSION_ID", unique = true, nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
 	
 	public Permission() {
 		

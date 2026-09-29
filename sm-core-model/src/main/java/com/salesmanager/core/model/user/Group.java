@@ -37,11 +37,11 @@ public class Group extends SalesManagerEntity<Integer, Group> implements Auditab
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	
 	@Id
-	@Column(name = "GROUP_ID", unique = true, nullable = false)
-	@TableGenerator(name = "GROUP_GEN", table = "SM_SEQUENCER", pkColumnName = "SEQ_NAME", valueColumnName = "SEQ_COUNT", pkColumnValue = "GROUP_SEQ_NEXT_VAL")
-	@GeneratedValue(strategy = GenerationType.TABLE, generator = "GROUP_GEN")
-	private Integer id;
+    @Column(name = "GROUP_ID", unique = true, nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
 
 	public Group() {
 

@@ -36,15 +36,15 @@ public class JWTCustomerDetailsService implements UserDetailsService {
             
             LOGGER.info("Đã tìm thấy Customer [{}], chuẩn bị tạo JWTUser", username);
 
-            // Đóng gói thành JWTUser với đúng 7 tham số
             return new JWTUser(
-                customer.getId(),                  // 1. Long: ID
-                customer.getUserName(),                // 2. String: Username (hoặc dùng customer.getUserName())
-                customer.getEmailAddress(),        // 3. String: Email
-                customer.getPassword(),            // 4. String: Mật khẩu đã băm (Hash)
-                Collections.emptyList(),           // 5. Collection: Phân quyền (bỏ trống cho Khách hàng)
-                customer.isActive(),               // 6. boolean: Trạng thái kích hoạt
-                null                               // 7. Date: Ngày reset mật khẩu lần cuối (để null)
+                customer.getId(),                  
+                customer.getUserName(),
+                customer.getFullName(),            
+                customer.getEmailAddress(),        
+                customer.getPassword(),            
+                Collections.emptyList(),           
+                customer.isActive(),               
+                null                               
             );
             
         } catch (UsernameNotFoundException e) {
