@@ -13,6 +13,7 @@ public class UserEntity extends User {
   private String adminAddress;
   private String adminUserName;
 	private boolean active;
+  
 
   public String getAdminName() {
     return adminName;

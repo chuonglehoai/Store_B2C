@@ -1,5 +1,6 @@
 package com.salesmanager.shop.facade.user;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -130,6 +131,7 @@ public class UserFacadeImpl implements UserFacade {
 
         try {
             ReadableUser readableUser = new ReadableUser();
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm");
             
             // Map các thông tin cơ bản từ Entity sang Readable DTO
             readableUser.setId(user.getId());
@@ -160,6 +162,19 @@ public class UserFacadeImpl implements UserFacade {
                 readableUser.setPermissions(permissions);
             }
 
+            if (user.getAuditSection() != null && user.getAuditSection().getDateCreated() != null) {
+                readableUser.setDateCreated(dateFormat.format(user.getAuditSection().getDateCreated()));
+            }
+
+            if (user.getAuditSection() != null && user.getAuditSection().getDateModified() != null) {
+                readableUser.setDateModified(dateFormat.format(user.getAuditSection().getDateModified()));
+            }
+
+            if (user.getLastLogin() != null) {
+                readableUser.setLastLogin(dateFormat.format(user.getLastLogin()));
+            }
+
+
             return readableUser;
         } catch (Exception e) {
             throw new ConversionRuntimeException(e);
@@ -173,12 +188,8 @@ public class UserFacadeImpl implements UserFacade {
             userModel.setAdminPhone(persistableUser.getAdminPhone());
             userModel.setAdminAddress(persistableUser.getAdminAddress());
             userModel.setAvatarUrl(persistableUser.getAvatarUrl());
-            userModel.setActive(persistableUser.isActive());
             userModel.setAdminName(persistableUser.getAdminName());
             userModel.setAdminUserName(persistableUser.getEmailAddress());
-
-            // Lưu ý: Mật khẩu (Password) và Groups sẽ được xử lý logic riêng 
-            // tại hàm create/update trong Facade trước khi gọi userService.save()
 
             return userModel;
         } catch (Exception e) {
@@ -236,6 +247,7 @@ public class UserFacadeImpl implements UserFacade {
             if (existingUser == null) {
                 throw new IllegalArgumentException("Không tìm thấy User với ID: " + id);
             }
+
             existingUser = convertPersistableUserToUser(existingUser, user);
 
             userService.saveOrUpdate(existingUser);
@@ -244,7 +256,7 @@ public class UserFacadeImpl implements UserFacade {
             return convertUserToReadableUser(existingUser);
             
         } catch (IllegalArgumentException e) {
-            throw e; // Ném thẳng lỗi do không tìm thấy User ra Controller
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Lỗi khi cập nhật User ID: {}", id, e);
             throw new RuntimeException("Cập nhật User thất bại!", e);
@@ -272,8 +284,14 @@ public class UserFacadeImpl implements UserFacade {
     public List<ReadableGroup> listAvailableGroups() {
         try {
             return groupService.list().stream()
-                // Bổ sung lệnh filter để chặn nhóm CUSTOMER
-                .filter(group -> group.getGroupType() != null && !group.getGroupType().name().equals("CUSTOMER"))
+                .filter(group -> {
+                    // 1. Loại bỏ nhóm CUSTOMER (dựa theo type)
+                    boolean isNotCustomer = group.getGroupType() == null || !group.getGroupType().name().equals("CUSTOMER");
+                    // 2. Loại bỏ nhóm SUPERADMIN (dựa theo tên)
+                    boolean isNotSuperAdmin = !group.getGroupName().equals("SUPERADMIN");
+                    
+                    return isNotCustomer && isNotSuperAdmin;
+                })
                 .map(group -> {
                     ReadableGroup rg = new ReadableGroup();
                     rg.setId(group.getId().longValue());

@@ -63,7 +63,8 @@ public class WebSecurityConfig {
                     "/swagger-ui.html",
                     "/swagger-resources/**",
                     "/webjars/**",
-                    "/error"
+                    "/error",
+                    "/uploads/**"
                 ).permitAll()
 
                 // CÁC ĐƯỜNG DẪN CÔNG KHAI DÀNH CHO CUSTOMER & ADMIN
@@ -78,7 +79,12 @@ public class WebSecurityConfig {
                     // Luồng Admin
                     "/api/v1/private/login",         // Admin Đăng nhập
                     "/api/v1/auth/**",               // Refresh Token
-                    "/api/v1/user/password/**"       // Admin Quên & Đặt lại mật khẩu (Đã sửa chuẩn theo Controller)
+                    "/api/v1/user/password/**",
+
+                    // Luồng Sản phẩm & Danh mục
+                    "/api/v1/products/import",
+                    "/api/v1/products/**",
+                    "/api/v1/categories/**"
                 ).permitAll()
 
                 // Các API quản trị/cá nhân còn lại bắt buộc có Token (Bao gồm cả Tạo Admin và Lấy thông tin ID)
