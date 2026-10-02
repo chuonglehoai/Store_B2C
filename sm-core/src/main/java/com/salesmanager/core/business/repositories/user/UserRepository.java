@@ -28,14 +28,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
            "ORDER BY u.id ASC")
     List<User> findAll();
 
-    // Xóa thẻ @Query("...") ở trên dòng này đi
     User findByResetPasswordToken(String resetPasswordToken);
 
-    @Query(value = "SELECT u FROM User u WHERE " +
+    @Query(value = "SELECT DISTINCT u FROM User u WHERE " +
                    "(:email IS NULL OR u.adminEmail LIKE %:email% OR u.adminUserName LIKE %:email%) AND " +
-                   "(:name IS NULL OR u.adminName LIKE %:name%)",
-           countQuery = "SELECT count(u) FROM User u WHERE " +
+                   "(:name IS NULL OR u.adminName LIKE %:name%) AND " +
+                   "u.id NOT IN (SELECT u2.id FROM User u2 JOIN u2.groups g WHERE g.groupName = 'SUPERADMIN')",
+           countQuery = "SELECT count(DISTINCT u) FROM User u WHERE " +
                         "(:email IS NULL OR u.adminEmail LIKE %:email% OR u.adminUserName LIKE %:email%) AND " +
-                        "(:name IS NULL OR u.adminName LIKE %:name%)")
+                        "(:name IS NULL OR u.adminName LIKE %:name%) AND " +
+                        "u.id NOT IN (SELECT u2.id FROM User u2 JOIN u2.groups g WHERE g.groupName = 'SUPERADMIN')")
     Page<User> listAll(@Param("email") String email, @Param("name") String name, Pageable pageable);
 }

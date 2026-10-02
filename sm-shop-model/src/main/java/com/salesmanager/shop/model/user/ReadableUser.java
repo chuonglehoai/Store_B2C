@@ -12,6 +12,8 @@ public class ReadableUser extends UserEntity {
 	 */
 	private static final long serialVersionUID = 1L;
 	private String lastLogin;
+	private String dateCreated;
+	private String dateModified;
 
 	private List<ReadablePermission> permissions = new ArrayList<ReadablePermission>();
 	private List<ReadableGroup> groups = new ArrayList<ReadableGroup>();
@@ -30,6 +32,22 @@ public class ReadableUser extends UserEntity {
 
 	public void setLastLogin(String lastLogin) {
 		this.lastLogin = lastLogin;
+	}
+
+	public String getDateCreated() {
+		return dateCreated;
+	}
+
+	public void setDateCreated(String dateCreated) {
+		this.dateCreated = dateCreated;
+	}
+
+	public String getDateModified() {
+		return dateModified;
+	}
+
+	public void setDateModified(String dateModified) {
+		this.dateModified = dateModified;
 	}
 
 	public List<ReadablePermission> getPermissions() {

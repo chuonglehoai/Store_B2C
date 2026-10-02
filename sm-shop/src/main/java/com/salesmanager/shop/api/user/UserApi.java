@@ -142,6 +142,7 @@ public class UserApi {
 
     //  Khóa / Kích hoạt tài khoản
     @PatchMapping("/{id}/enabled")
+    @PreAuthorize("hasRole('SUPERADMIN')")
     @Operation(summary = "Bật hoặc tắt kích hoạt tài khoản")
     public ResponseEntity<?> updateEnabled(@PathVariable Long id, @RequestBody Map<String, Boolean> payload) {
         Boolean active = payload.get("active");
